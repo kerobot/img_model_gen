@@ -1,0 +1,10 @@
+pylint
+requests
+python-dotenv
+numpy
+scipy
+matplotlib
+opencv-python
+Pillow
+tensorflow
+keras
