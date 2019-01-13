@@ -2,6 +2,6 @@ venv
 .vscode
 .cache
 .env
-face_image
 face_scratch_image
 test_image
+model.h5
