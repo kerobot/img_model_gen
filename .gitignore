@@ -4,4 +4,4 @@ venv
 .env
 face_scratch_image
 test_image
-model.h5
+model
