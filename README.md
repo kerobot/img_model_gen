@@ -4,6 +4,8 @@ To Categorical And Save Model by Keras
 
 画像ファイルをもとに学習データとテストデータのラベル付けおよびモデルの保存を行います。
 
+事前に [graphviz](http://www.graphviz.org/) をインストールし、binディレクトリのPATHを設定しておくこと。
+
 ## 環境
 
 * Windows 10 x64 1809
@@ -11,6 +13,7 @@ To Categorical And Save Model by Keras
 * Power Shell 6 x64
 * Visual Studio Code x64
 * Git for Windows x64
+* graphviz
 
 ## 構築
 
@@ -39,6 +42,8 @@ To Categorical And Save Model by Keras
 ```powershell
 > pip install -r requirements.txt
 ```
+
+> graphvizが利用するpydotは開発が停止しているため、代わりにpydotplusを利用します。
 
 ## 実行
 

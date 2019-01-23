@@ -8,3 +8,5 @@ opencv-python
 Pillow
 tensorflow
 keras
+graphviz
+pydotplus
