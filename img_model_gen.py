@@ -29,21 +29,29 @@ def load_images(image_directory):
     return image_file_list
 
 def labeling_images(image_file_list):
-    X_data = []
+    x_data = []
     y_data = []
-    for i in range(0,len(image_file_list)):
-        file_name, image = image_file_list[i]
+    for idx, (file_name, image) in enumerate(image_file_list):
         # 画像をBGR形式からRGB形式へ変換
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # 画像配列（RGB画像）
-        X_data.append(image)
+        x_data.append(image)
         # ラベル配列（ファイル名の先頭2文字をラベルとして利用する）
         label = int(file_name[0:2])
         print(f"ラベル:{label:02}　画像ファイル名:{file_name}")
-        y_data = np.append(y_data, label).reshape(i+1,1)
-    X_data = np.array(X_data)
-    print(f"ラベリング画像数：{len(X_data)}")
-    return (X_data, y_data)
+        y_data = np.append(y_data, label).reshape(idx+1, 1)
+    x_data = np.array(x_data)
+    print(f"ラベリング画像数：{len(x_data)}")
+    return (x_data, y_data)
+
+def delete_dir(dir_path, is_delete_top_dir=True):
+    for root, dirs, files in os.walk(dir_path, topdown=False):
+        for name in files:
+            os.remove(os.path.join(root, name))
+        for name in dirs:
+            os.rmdir(os.path.join(root, name))
+    if is_delete_top_dir:
+        os.rmdir(dir_path)
 
 RETURN_SUCCESS = 0
 RETURN_FAILURE = -1
@@ -65,48 +73,52 @@ def main():
     print("===================================================================")
 
     # ディレクトリの作成
-    if os.path.isdir(OUTPUT_MODEL_DIR) == False:
+    if not os.path.isdir(OUTPUT_MODEL_DIR):
         os.mkdir(OUTPUT_MODEL_DIR)
+    # ディレクトリ内のファイル削除
+    delete_dir(OUTPUT_MODEL_DIR, False)
+
+    num_classes = 2
 
     # 学習用の画像ファイルの読み込み
     train_file_list = load_images(TRAIN_IMAGE_DIR)
     # 学習用の画像ファイルのラベル付け
-    X_train, y_train = labeling_images(train_file_list)
+    x_train, y_train = labeling_images(train_file_list)
 
-    # plt.imshow(X_train[0])
+    # plt.imshow(x_train[0])
     # plt.show()
     # print(y_train[0])
 
     # テスト用の画像ファイルの読み込み
     test_file_list = load_images(TEST_IMAGE_DIR)
     # 学習用の画像ファイルのラベル付け
-    X_test, y_test = labeling_images(test_file_list)
+    x_test, y_test = labeling_images(test_file_list)
 
-    # plt.imshow(X_test[0])
+    # plt.imshow(x_test[0])
     # plt.show()
     # print(y_test[0])
 
     # 画像とラベルそれぞれの次元数を確認
-    print("X_train.shape:", X_train.shape)
+    print("x_train.shape:", x_train.shape)
     print("y_train.shape:", y_train.shape)
-    print("X_test.shape:", X_test.shape)
+    print("x_test.shape:", x_test.shape)
     print("y_test.shape:", y_test.shape)
 
     # 特徴量の正規化
-    # X_train = X_train.astype('float32')
-    # X_test = X_test.astype('float32')
-    # X_train /= 255
-    # X_test /= 255
+    # x_train = x_train.astype('float32')
+    # x_test = x_test.astype('float32')
+    # x_train /= 255
+    # x_test /= 255
 
     # クラスラベルの1-hotベクトル化（線形分離しやすくする）
     # 0 → 1,0
     # 1 → 0,1
-    y_train = to_categorical(y_train, 2)
-    y_test = to_categorical(y_test, 2)
+    y_train = to_categorical(y_train, num_classes)
+    y_test = to_categorical(y_test, num_classes)
 
-    print("X_train.shape:", X_train.shape)
+    print("x_train.shape:", x_train.shape)
     print("y_train.shape:", y_train.shape)
-    print("X_test.shape:", X_test.shape)
+    print("x_test.shape:", x_test.shape)
     print("y_test.shape:", y_test.shape)
 
     # モデルの定義
@@ -120,7 +132,7 @@ def main():
     # strides       ストライドの幅(フィルタを動かすピクセル数)
     # padding       データの端の取り扱い方(入力データの周囲を0で埋める(ゼロパディング)ときは'same',ゼロパディングしないときは'valid')
     # activation    活性化関数
-    model.add(Conv2D(input_shape=(64, 64, 3), filters=32,kernel_size=(3, 3), 
+    model.add(Conv2D(input_shape=(64, 64, 3), filters=32, kernel_size=(3, 3),
                      strides=(1, 1), padding="same", activation='relu'))
     # 2x2の4つの領域に分割して各2x2の行列の最大値をとることで出力をダウンスケールする
     # パラメータはダウンスケールする係数を決定する2つの整数のタプル
@@ -130,20 +142,20 @@ def main():
     # model.add(Dropout(0.05))
 
     # 畳み込み2
-    model.add(Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), 
+    model.add(Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1),
                      padding="same", activation='relu'))
     # 出力のスケールダウン2
     model.add(MaxPooling2D(pool_size=(2, 2)))
     # ドロップアウト層2
-    # model.add(Dropout(0.01))
+    model.add(Dropout(0.01))
 
     # 畳み込み3
-    model.add(Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), 
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1),
                      padding="same", activation='relu'))
     # 出力のスケールダウン3
     model.add(MaxPooling2D(pool_size=(2, 2)))
     # ドロップアウト層3
-    model.add(Dropout(0.01))
+    model.add(Dropout(0.05))
 
     # 全結合層(プーリング層の出力は4次元テンソルであるため1次元のベクトルに変換)
     model.add(Flatten())
@@ -155,10 +167,10 @@ def main():
     model.add(Dense(128, activation='sigmoid'))
 
     # 予測用のレイヤー3
-    model.add(Dense(2, activation='softmax'))
+    model.add(Dense(num_classes, activation='softmax'))
 
     # コンパイル
-    model.compile(optimizer='sgd', 
+    model.compile(optimizer='sgd',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
@@ -170,14 +182,14 @@ def main():
     plot_model(model, to_file=plot_file_path, show_shapes=True)
 
     # 学習
-    # model.fit(X_train, y_train, batch_size=32, epochs=60)
+    # model.fit(x_train, y_train, batch_size=32, epochs=60)
 
     # グラフ用
-    history = model.fit(X_train, y_train, batch_size=32, epochs=30, 
-                        verbose=1, validation_data=(X_test, y_test))
+    history = model.fit(x_train, y_train, batch_size=32, epochs=30,
+                        verbose=1, validation_data=(x_test, y_test))
 
     # 汎化精度の評価・表示
-    test_loss, test_acc = model.evaluate(X_test, y_test, batch_size=32, verbose=0)
+    test_loss, test_acc = model.evaluate(x_test, y_test, batch_size=32, verbose=0)
     print(f"validation loss:{test_loss}\r\nvalidation accuracy:{test_acc}")
 
     # acc（精度）, val_acc（バリデーションデータに対する精度）のプロット
