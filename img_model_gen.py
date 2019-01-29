@@ -9,6 +9,7 @@ from keras.utils.np_utils import to_categorical
 from tensorflow.python.keras.utils.vis_utils import plot_model
 from keras.layers import Conv2D, Dense, Flatten, MaxPooling2D, Dropout
 from keras.models import Sequential
+# from keras.optimizers import Adam
 
 def load_images(image_directory):
     image_file_list = []
@@ -55,6 +56,7 @@ def delete_dir(dir_path, is_delete_top_dir=True):
 
 RETURN_SUCCESS = 0
 RETURN_FAILURE = -1
+OUTPUT_MODEL_ONLY = False
 # Test Image Directory
 TEST_IMAGE_DIR = "./test_image"
 # Train Image Directory
@@ -79,6 +81,8 @@ def main():
     delete_dir(OUTPUT_MODEL_DIR, False)
 
     num_classes = 2
+    batch_size = 32
+    epochs = 30
 
     # 学習用の画像ファイルの読み込み
     train_file_list = load_images(TRAIN_IMAGE_DIR)
@@ -169,6 +173,8 @@ def main():
     # 予測用のレイヤー3
     model.add(Dense(num_classes, activation='softmax'))
 
+    # adam = Adam(lr=1e-4)
+
     # コンパイル
     model.compile(optimizer='sgd',
                   loss='categorical_crossentropy',
@@ -181,24 +187,35 @@ def main():
     plot_file_path = os.path.join(OUTPUT_MODEL_DIR, OUTPUT_PLOT_FILE)
     plot_model(model, to_file=plot_file_path, show_shapes=True)
 
-    # 学習
-    # model.fit(x_train, y_train, batch_size=32, epochs=60)
+    if OUTPUT_MODEL_ONLY:
+        # 学習
+        model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
+    else:
+        # グラフ用
+        history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs,
+                            verbose=1, validation_data=(x_test, y_test))
 
-    # グラフ用
-    history = model.fit(x_train, y_train, batch_size=32, epochs=30,
-                        verbose=1, validation_data=(x_test, y_test))
+        # 汎化精度の評価・表示
+        test_loss, test_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
+        print(f"validation loss:{test_loss}\r\nvalidation accuracy:{test_acc}")
 
-    # 汎化精度の評価・表示
-    test_loss, test_acc = model.evaluate(x_test, y_test, batch_size=32, verbose=0)
-    print(f"validation loss:{test_loss}\r\nvalidation accuracy:{test_acc}")
+        # acc（精度）, val_acc（バリデーションデータに対する精度）のプロット
+        plt.plot(history.history["acc"], label="acc", ls="-", marker="o")
+        plt.plot(history.history["val_acc"], label="val_acc", ls="-", marker="x")
+        plt.title('model accuracy')
+        plt.xlabel("epoch")
+        plt.ylabel("accuracy")
+        plt.legend(loc="best")
+        plt.show()
 
-    # acc（精度）, val_acc（バリデーションデータに対する精度）のプロット
-    plt.plot(history.history["acc"], label="acc", ls="-", marker="o")
-    plt.plot(history.history["val_acc"], label="val_acc", ls="-", marker="x")
-    plt.ylabel("accuracy")
-    plt.xlabel("epoch")
-    plt.legend(loc="best")
-    plt.show()
+        # 損失の履歴をプロット
+        plt.plot(history.history['loss'], label="loss", ls="-", marker="o")
+        plt.plot(history.history['val_loss'], label="val_loss", ls="-", marker="x")
+        plt.title('model loss')
+        plt.xlabel('epoch')
+        plt.ylabel('loss')
+        plt.legend(loc='lower right')
+        plt.show()
 
     # モデルを保存
     model_file_path = os.path.join(OUTPUT_MODEL_DIR, OUTPUT_MODEL_FILE)
