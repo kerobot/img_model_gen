@@ -3,13 +3,12 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.utils.np_utils import to_categorical
+from keras.layers import Conv2D, Dense, Flatten, MaxPooling2D, Dropout
+from keras.models import Sequential
 # from keras.utils.vis_utils import plot_model
 # tensorflowのkerasはimport時にpydot_ng,pydotplusをimportするように記述されているが，
 # keras(ver=2.2.0)はimport時，pydotしかimportするようにしか記述されていないため下記とする
 from tensorflow.python.keras.utils.vis_utils import plot_model
-from keras.layers import Conv2D, Dense, Flatten, MaxPooling2D, Dropout
-from keras.models import Sequential
-# from keras.optimizers import Adam
 
 def load_images(image_directory):
     image_file_list = []
@@ -56,6 +55,7 @@ def delete_dir(dir_path, is_delete_top_dir=True):
 
 RETURN_SUCCESS = 0
 RETURN_FAILURE = -1
+# Outoput Model Only
 OUTPUT_MODEL_ONLY = False
 # Test Image Directory
 TEST_IMAGE_DIR = "./test_image"
@@ -108,18 +108,11 @@ def main():
     print("x_test.shape:", x_test.shape)
     print("y_test.shape:", y_test.shape)
 
-    # 特徴量の正規化
-    # x_train = x_train.astype('float32')
-    # x_test = x_test.astype('float32')
-    # x_train /= 255
-    # x_test /= 255
-
     # クラスラベルの1-hotベクトル化（線形分離しやすくする）
-    # 0 → 1,0
-    # 1 → 0,1
     y_train = to_categorical(y_train, num_classes)
     y_test = to_categorical(y_test, num_classes)
 
+    # 画像とラベルそれぞれの次元数を確認
     print("x_train.shape:", x_train.shape)
     print("y_train.shape:", y_train.shape)
     print("x_test.shape:", x_test.shape)
@@ -142,15 +135,14 @@ def main():
     # パラメータはダウンスケールする係数を決定する2つの整数のタプル
     # 各領域内の位置の違いを無視するためモデルが小さな位置変化に対して頑健（robust）となる
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    # ドロップアウト層1
-    # model.add(Dropout(0.05))
 
     # 畳み込み2
     model.add(Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1),
                      padding="same", activation='relu'))
     # 出力のスケールダウン2
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    # ドロップアウト層2
+
+    # ドロップアウト1
     model.add(Dropout(0.01))
 
     # 畳み込み3
@@ -158,7 +150,8 @@ def main():
                      padding="same", activation='relu'))
     # 出力のスケールダウン3
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    # ドロップアウト層3
+
+    # ドロップアウト2
     model.add(Dropout(0.05))
 
     # 全結合層(プーリング層の出力は4次元テンソルであるため1次元のベクトルに変換)
@@ -172,8 +165,6 @@ def main():
 
     # 予測用のレイヤー3
     model.add(Dense(num_classes, activation='softmax'))
-
-    # adam = Adam(lr=1e-4)
 
     # コンパイル
     model.compile(optimizer='sgd',
@@ -191,7 +182,7 @@ def main():
         # 学習
         model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
     else:
-        # グラフ用
+        # 学習+グラフ
         history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs,
                             verbose=1, validation_data=(x_test, y_test))
 
